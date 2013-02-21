@@ -1,0 +1,221 @@
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <cstring>
+#include "board.h"
+#include "player.h"
+#include "humanPlayer.h"
+#include "computerPlayer.h"
+#include "piece.h"
+
+void test();
+void game();
+void human();
+void computer();
+void human(Board *board);
+void computer(Board *board);
+Board *menu(Board *board);
+Board *loadBoard();
+
+using namespace std;
+
+int main(int argc, char *argv[]) {
+  int vComp = 0;
+
+  if (argc<2)
+    return 1;
+  else {
+    if (!(strcmp(argv[1], "-h"))) {
+      cout << "CHECKERS __ Human v Human\nPlease enter 'M' at any time during the game to see the menu\n";
+      human();
+    }
+    else if (!(strcmp(argv[1], "-c"))) {
+      cout << "CHECKERS __ Human v Computer\n\nPlease enter 'M' at any time during the game to see the menu\n";
+      computer();
+    }
+   else if (!(strcmp(argv[1], "-t"))) {
+      cout << "CHECKERS __ Computer v Computer\n";
+      test();
+    }
+  }
+  return 0;
+}
+
+Board *menu(Board *input) {
+  char inputBuffer[100];
+
+  cout << "Please enter 'S' to save, 'Q' to quit, 'L' to load or 'C' to continue";
+  cin >> inputBuffer;
+  if (inputBuffer[0] == 'C') {
+    return input;
+  } else if (inputBuffer[0] == 'S') {
+    input->save();
+    return input;
+  } else if (inputBuffer[0] == 'Q') {
+    return 0;
+  } else if (inputBuffer[0] == 'L') {
+    if (loadBoard != NULL) {
+      input->tearDown();
+      delete input;
+      return loadBoard();
+    } else {
+      return input;
+    }
+  } else {
+    cout << "Please make a valid selection";
+    return menu(input);
+  }
+}
+
+Board *loadBoard() {
+  int bread = 0, in;
+  color turn;
+  Board *thisBoard = new Board(false);
+  in = open("save.data", O_RDONLY, 0644);
+  if (in < 0) {
+    cout << "Problem loading file";
+    return 0;
+  }
+  //Read the current thing
+  bread = read(in, &turn, sizeof(color));
+  thisBoard->setTurn(turn);
+  thisBoard->clear();
+
+  do {
+    Piece *piece = new Piece();
+    bread = read(in, &(*piece), sizeof(Piece));
+    thisBoard->placePiece(piece);
+    cout << piece->getColor() << " piece at " << piece->getY() << ", " << piece->getX() << " read\n";
+  } while (bread > 0 && bread == sizeof(Piece));
+
+  return thisBoard;
+}
+
+
+void human() {
+  Board *thisBoard = new Board(true);
+  human(thisBoard);
+}
+
+void human(Board *thisBoard) {
+  Move *thisMove;
+  int returnValue;
+  Player *one = new humanPlayer(thisBoard, BLACK);
+  Player *two = new humanPlayer(thisBoard, RED);
+
+  while (!(thisBoard->isOver())) {
+    while (thisBoard->getTurn() == BLACK) {
+      cout << "BLACK's Move:\n";
+      cout << thisBoard->toString();
+      thisMove = one->getMove();
+      if (thisMove == 0) {
+	thisBoard = menu(thisBoard);
+      } else {
+	thisBoard->move(one->getColor(), thisMove);
+	delete thisMove;
+      }
+    } 
+    if (!(thisBoard->isOver())) {
+      while (thisBoard->getTurn() == RED) {
+	  cout << "RED's Move:\n";
+	  cout << thisBoard->toString();
+	  thisMove = two->getMove();
+	  if (thisMove == 0) {
+	    if (newBoard == 0) {
+	      thisBoard = menu(thisBoard);
+	    } 
+	  } else {
+	    thisBoard->move(two->getColor(), thisMove);
+	    delete thisMove;
+	  }
+      } 
+    }
+  }
+  cout << "GAME OVER\n";
+  cout << thisBoard->toString();
+  thisBoard->tearDown();
+  delete thisBoard;
+  delete one;
+  delete two;
+  return;
+}
+
+void computer() {
+  Board *thisBoard = new Board(true);
+  computer(thisBoard);
+}
+
+void computer(Board *thisBoard) {
+  Move *thisMove;
+  Player *one = new humanPlayer(thisBoard, BLACK);
+  Player *two = new computerPlayer(thisBoard, RED);
+  
+  while (!(thisBoard->isOver())) {
+    while (thisBoard->getTurn() == BLACK) {
+      cout << "BLACK's Move:\n";
+      cout << thisBoard->toString();
+      thisMove = one->getMove();
+      if (thisMove == 0) {
+	if (newBoard == 0) {
+	  thisBoard = newBoard;
+	} 
+      } else {
+	thisBoard->move(one->getColor(), thisMove);
+	delete thisMove;
+      }
+    } 
+    if (!(thisBoard->isOver())) {
+      while (thisBoard->getTurn()==RED) {
+	thisMove = two->getMove();
+	thisBoard->move(two->getColor(), thisMove);
+        cout << "Computer's move: " << thisMove->getX() << ", " << thisMove->getY() << " to " << thisMove->getDx() << ", " << thisMove->getDy() << endl;
+	delete thisMove;
+      } 
+    }
+  }
+  cout << "GAME OVER\n";
+  cout << thisBoard->toString();
+  thisBoard->tearDown();
+  delete thisBoard;
+  delete one;
+  delete two;
+  return;
+}
+
+void test() {
+  Board *thisBoard = new Board(true);
+  Move *thisMove;
+  bool one_moved, two_moved;
+  Player *one = new computerPlayer(thisBoard, BLACK);
+  Player *two = new computerPlayer(thisBoard, RED);
+  
+  while (!(thisBoard->isOver())) {
+    one_moved = false;
+    two_moved = false;
+
+    while (one_moved==false) {
+      thisMove = one->getMove();
+      one_moved = thisBoard->move(one->getColor(), thisMove);
+      cout << "Computer's move: " << thisMove->getX() << ", " << thisMove->getY() << " to " << thisMove->getDx() << ", " << thisMove->getDy() << endl;
+      cout << thisBoard->toString();
+      delete thisMove;
+
+    } 
+    if (!(thisBoard->isOver())) {
+      while (two_moved==false) {
+	thisMove = two->getMove();
+	two_moved = thisBoard->move(two->getColor(), thisMove);
+        cout << "Computer's move: " << thisMove->getX() << ", " << thisMove->getY() << " to " << thisMove->getDx() << ", " << thisMove->getDy() << endl;
+	cout << thisBoard->toString();
+	delete thisMove;
+      } 
+    }
+  }
+  cout << "GAME OVER\n";
+  cout << thisBoard->toString();
+  thisBoard->tearDown();
+  delete thisBoard;
+  delete one;
+  delete two;
+  return;
+}
